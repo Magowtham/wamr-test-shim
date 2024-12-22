@@ -1,0 +1,11 @@
+[target.'cfg(windows)']
+rustflags = [
+    "-Adead_code",
+    "-Awarnings",
+]
+
+[target.'cfg(unix)']
+runner = 'scripts/test-runner.sh'
+
+[profile.release]
+strip = "symbols"

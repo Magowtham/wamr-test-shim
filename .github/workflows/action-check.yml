@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: Run lint
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      runtime:
+        required: true
+        type: string
+
+jobs:
+  check:
+    name: lint on ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt, clippy
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      - name: Setup build env
+        run: |
+          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
+          ./scripts/setup-$os.sh
+        shell: bash
+      - run: 
+          # needed to run rustfmt in nightly toolchain
+          rustup toolchain install nightly --component rustfmt
+      - name: Run checks
+        run: make check-${{ inputs.runtime }}

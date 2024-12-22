@@ -1,0 +1,7 @@
+/bin/
+/dist/
+/test/out/img.tar
+/test/k8s/_out
+**/target/
+/release/
+/.vscode/

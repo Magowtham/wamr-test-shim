@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: Run smoke tests
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      runtime:
+        required: true
+        type: string
+
+jobs:
+  smoke-test:
+    name: smoke test on ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup build env
+        run: ./scripts/setup-linux.sh
+        shell: bash
+      - name: Download artifacts
+        uses: actions/download-artifact@master
+        with:
+          name: containerd-shim-${{ inputs.runtime }}-x86_64-linux-musl
+          path: dist
+      - name: Unpack artifats
+        shell: bash
+        run: |
+          mkdir -p dist/bin
+          tar -xzf dist/containerd-shim-${{ inputs.runtime }}-x86_64-linux-musl.tar.gz -C dist/bin
+      - name: Download test image
+        uses: actions/download-artifact@master
+        with:
+          name: test-img
+          path: dist
+      - name: enable OTLP
+        if: ${{ inputs.runtime == 'wasmtime' }}
+        run: |
+          sudo ./scripts/setup-otel.sh
+      - name: run
+        timeout-minutes: 5
+        run: |
+          ls -alh dist
+          ls -alh dist/bin
+          make load
+          sudo cp -f dist/bin/* /usr/local/bin
+          sudo ctr run --rm --runtime=io.containerd.${{ inputs.runtime }}.v1 ghcr.io/containerd/runwasi/wasi-demo-app:latest testwasm /wasi-demo-app.wasm echo 'hello'

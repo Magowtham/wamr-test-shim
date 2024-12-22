@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: Run end to end tests on kind
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        type: string
+        default: img
+
+jobs:
+  test-image:
+    name: build test ${{ inputs.image }}
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: make dist/${{ inputs.image }}.tar
+      - name: Upload artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: test-${{ inputs.image }}
+          path: dist/${{ inputs.image }}.tar

@@ -1,0 +1,97 @@
+name: Run Benchmarks
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  pull_request:
+
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch submodules
+        run: git submodule update --init --recursive
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      - name: Setup build environment
+        shell: bash
+        run: |
+          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
+          ./scripts/setup-$os.sh
+      - name: Build and load shims and wasi-demo-app
+        shell: bash
+        run: |
+          make build install test-image load test-image/oci load/oci
+      - name: Run Benchmarks
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo bench -p containerd-shim-benchmarks -- --output-format bencher | tee output.txt
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1.20.4
+        with:
+          name: Criterion.rs Benchmark
+          tool: 'cargo'
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # my experimental local benchmarking seems to have a 20% margin of error. 
+          # So I set the alert threshold to 130% of the previous benchmark result.
+          # If the current benchmark result is more than 130% of the previous benchmark result, it will fail.
+          alert-threshold: '130%'
+          fail-on-alert: ${{ github.event_name == 'schedule' }}
+          alert-comment-cc-users: '@runwasi-committers'
+          # Enable Job Summary
+          summary-always: true
+          # Automatically push the benchmark result to gh-pages branch
+          # See https://github.com/benchmark-action/github-action-benchmark?tab=readme-ov-file#charts-on-github-pages-1 for more details
+          auto-push: ${{ github.event_name == 'schedule' }}
+  
+  benchmark-http:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch submodules
+        run: git submodule update --init --recursive
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: '' #Disable.  By default this action sets environment variable is set to -D warnings.  We manage this in the Makefile
+      - name: Setup build environment
+        shell: bash
+        run: |
+          os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
+          ./scripts/setup-$os.sh
+      - name: Build and load shims and wasi-demo-app
+        shell: bash
+        run: |
+          make build install test-image/http load/http
+      - name: Start wasmtime shim
+        shell: bash
+        run: |
+          sudo ctr run --rm --net-host --runtime=io.containerd.wasmtime.v1 ghcr.io/containerd/runwasi/wasi-http:latest wasi-http /wasi-http.wasm &
+          sleep 1
+      - name: Wait for wasmtime shim to start
+        shell: bash
+        run: |
+          while ! curl -s http://127.0.0.1:8080 > /dev/null; do
+            sleep 1
+          done
+      - name: Run HTTP throughput and latency benchmarks
+        if: success()
+        uses: ./.github/actions/run-hey-load-test
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Stop wasmtime shim
+        if: success()
+        shell: bash
+        run: |
+          sudo ctr task kill -s SIGKILL wasi-http
