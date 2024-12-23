@@ -1,5 +1,20 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WamrSdkResponse {
+pub struct WamrSdkNewInstanceResponse {
+    #[prost(int32, tag="1")]
+    pub status: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WamrSdkStartResponse {
+    #[prost(int32, tag="1")]
+    pub status: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WamrSdkKillResponse {
+    #[prost(int32, tag="1")]
+    pub status: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WamrSdkDeleteResponse {
     #[prost(int32, tag="1")]
     pub status: i32,
 }
@@ -67,10 +82,10 @@ pub mod wamr_sdk_client {
             self.inner = self.inner.accept_gzip();
             self
         }
-        pub async fn sdk_test(
+        pub async fn new_instance(
             &mut self,
             request: impl tonic::IntoRequest<()>,
-        ) -> Result<tonic::Response<super::WamrSdkResponse>, tonic::Status> {
+        ) -> Result<tonic::Response<super::WamrSdkNewInstanceResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -81,7 +96,60 @@ pub mod wamr_sdk_client {
                     )
                 })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/wamr_sdk.WamrSdk/SdkTest");
+            let path = http::uri::PathAndQuery::from_static(
+                "/wamr_sdk.WamrSdk/NewInstance",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn start(
+            &mut self,
+            request: impl tonic::IntoRequest<()>,
+        ) -> Result<tonic::Response<super::WamrSdkStartResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/wamr_sdk.WamrSdk/Start");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn kill(
+            &mut self,
+            request: impl tonic::IntoRequest<()>,
+        ) -> Result<tonic::Response<super::WamrSdkKillResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/wamr_sdk.WamrSdk/Kill");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn delete(
+            &mut self,
+            request: impl tonic::IntoRequest<()>,
+        ) -> Result<tonic::Response<super::WamrSdkDeleteResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/wamr_sdk.WamrSdk/Delete");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }

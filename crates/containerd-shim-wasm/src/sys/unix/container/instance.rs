@@ -25,10 +25,15 @@ use crate::sandbox::{
 use crate::sys::container::executor::Executor;
 
 //experiment imports
+
+const GRPC_SERVER_ADDRESS: &str = "http://127.0.0.1:8080";
+
 use tokio::runtime::Runtime as TokioRuntime;
 use tonic::Request;
 use wamr_sdk::wamr_sdk_client::WamrSdkClient;
-use wamr_sdk::WamrSdkResponse;
+use wamr_sdk::{
+    WamrSdkDeleteResponse, WamrSdkKillResponse, WamrSdkNewInstanceResponse, WamrSdkStartResponse,
+};
 
 pub mod wamr_sdk {
     include!("../../../../stubs/wamr_sdk.rs");
@@ -48,6 +53,22 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn new(id: String, cfg: Option<&InstanceConfig<Self::Engine>>) -> Result<Self, SandboxError> {
+        //experiment code
+        let tokio_runtime = TokioRuntime::new().expect("failed to create tokio runtime");
+
+        tokio_runtime.block_on(async {
+            let mut client = WamrSdkClient::connect(GRPC_SERVER_ADDRESS)
+                .await
+                .expect("failed to connect to grpc server, (new)");
+
+            let request = Request::new(());
+
+            let _ = client
+                .new_instance(request)
+                .await
+                .expect("error while calling the new rpc function");
+        });
+
         let cfg = cfg.context("missing configuration")?;
         let engine = cfg.get_engine();
         let bundle = cfg.get_bundle().to_path_buf();
@@ -87,19 +108,19 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     fn start(&self) -> Result<u32, SandboxError> {
         //experiment code
 
-        let tk_runtime = TokioRuntime::new().expect("failed to create tokio runtime");
+        let tokio_runtime = TokioRuntime::new().expect("failed to create tokio runtime");
 
         tokio_runtime.block_on(async {
-            let server_addr = "http://127.0.0.1:8080";
-            let request = Request::new(());
-            let mut client = WamrSdkClient::connect(server_addr)
+            let mut client = WamrSdkClient::connect(GRPC_SERVER_ADDRESS)
                 .await
-                .expect("failed to connect to server");
+                .expect("failed to connect to grpc server, (start)");
+
+            let request = Request::new(());
 
             let _ = client
-                .sdk_test(request)
+                .start(request)
                 .await
-                .expect("error occurred in gRPC call");
+                .expect("error while calling the start rpc function");
         });
 
         log::info!("starting instance: {}", self.id);
@@ -138,6 +159,22 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// Send a signal to the instance
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn kill(&self, signal: u32) -> Result<(), SandboxError> {
+        //experiment code
+        let tokio_runtime = TokioRuntime::new().expect("failed to create tokio runtime");
+
+        tokio_runtime.block_on(async {
+            let mut client = WamrSdkClient::connect(GRPC_SERVER_ADDRESS)
+                .await
+                .expect("failed to connect to grpc server, (kill)");
+
+            let request = Request::new(());
+
+            let _ = client
+                .kill(request)
+                .await
+                .expect("error while calling the kill rpc function");
+        });
+
         log::info!("sending signal {signal} to instance: {}", self.id);
         let signal = Signal::try_from(signal as i32).map_err(|err| {
             SandboxError::InvalidArgument(format!("invalid signal number: {}", err))
@@ -155,6 +192,22 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// This is called after the instance has exited.
     #[cfg_attr(feature = "tracing", tracing::instrument(parent = tracing::Span::current(), skip_all, level = "Info"))]
     fn delete(&self) -> Result<(), SandboxError> {
+        //experiment code
+        let tokio_runtime = TokioRuntime::new().expect("failed to create tokio runtime");
+
+        tokio_runtime.block_on(async {
+            let mut client = WamrSdkClient::connect(GRPC_SERVER_ADDRESS)
+                .await
+                .expect("failed to connect to grpc server, (delete)");
+
+            let request = Request::new(());
+
+            let _ = client
+                .delete(request)
+                .await
+                .expect("error while calling the delete rpc function");
+        });
+
         log::info!("deleting instance: {}", self.id);
         self.container
             .lock()
