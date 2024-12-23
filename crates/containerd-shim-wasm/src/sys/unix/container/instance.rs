@@ -31,9 +31,6 @@ const GRPC_SERVER_ADDRESS: &str = "http://127.0.0.1:8080";
 use tokio::runtime::Runtime as TokioRuntime;
 use tonic::Request;
 use wamr_sdk::wamr_sdk_client::WamrSdkClient;
-use wamr_sdk::{
-    WamrSdkDeleteResponse, WamrSdkKillResponse, WamrSdkNewInstanceResponse, WamrSdkStartResponse,
-};
 
 pub mod wamr_sdk {
     include!("../../../../stubs/wamr_sdk.rs");
